@@ -1001,6 +1001,7 @@ class SparkLightningTests(unittest.TestCase):
                         epochs=2,
                         verbose=2,
                         trainer_args={'stochastic_weight_avg': True})
+                        # add comet logger in above params for testing
 
                     torch_model = torch_estimator.fit(df)
 

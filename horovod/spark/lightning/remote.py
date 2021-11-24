@@ -25,6 +25,7 @@ import pytorch_lightning as pl
 from pytorch_lightning import Trainer, Callback
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger, CometLogger
+from comet_ml.gpu_logging import get_recurrent_gpu_metric
 
 from horovod.spark.common import constants
 from horovod.spark.common.util import _get_assigned_gpu_or_default
@@ -124,12 +125,31 @@ def RemoteTrainer(estimator, metadata, ckpt_bytes, run_id, dataset_idx, train_ro
                 print(f"Setup logger: Using TensorBoardLogger: {train_logger}")
 
             elif isinstance(logger, CometLogger) and logger._experiment_key is None:
+                # gpu metric logging
+                os.environ["COMET_DISTRIBUTED_NODE_IDENTIFIER"] = "gpu-%s" % (hvd.rank())
+                os.environ["COMET_AUTO_LOG_ENV_DETAILS"] = "1"
+                os.environ["COMET_AUTO_LOG_ENV_GPU"] = "1"
+                os.environ["COMET_LOGGING_FILE"] = logs_path + "/comet.log"
+                os.environ["COMET_LOGGING_FILE_LEVEL"] = "debug"
+
+                print(f"Set comet variables and pass params to log all gpu metrics. Currently in {hvd.rank()}")
+                # print for test only
+                print(os.environ)
+
+                print("before get_recurrent_gpu_metric: ")
+                print(get_recurrent_gpu_metric())
+
                 # Resume logger experiment key if passed correctly from CPU.
                 train_logger = CometLogger(
                     save_dir=logs_path,
                     api_key=logger.api_key,
                     experiment_key=logger_experiment_key,
+                    log_env_gpu=True,
+                    log_env_details=True,
                 )
+
+                print("after get_recurrent_gpu_metric: ")
+                print(get_recurrent_gpu_metric())
 
                 print(f"Setup logger: Resume comet logger: {vars(train_logger)}")
             else:
@@ -278,6 +298,12 @@ def RemoteTrainer(estimator, metadata, ckpt_bytes, run_id, dataset_idx, train_ro
                 output = {'model': module.state_dict(), 'logged_metrics': trainer.logged_metrics}
 
                 torch.save(output, serialized_checkpoint)
+
+                # if isinstance(logger, CometLogger) and logger._experiment_key is None:
+                #     print("Logging comet debug log to comet asset")
+                #     comet_log_path = logs_path + "/comet.log"
+                #     fp = open(comet_log_path, "rb")
+                #     train_logger.log_asset(fp, file_name="debug")
 
                 return serialized_checkpoint
     return train
