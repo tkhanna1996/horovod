@@ -125,6 +125,25 @@ def RemoteTrainer(estimator, metadata, ckpt_bytes, run_id, dataset_idx, train_ro
                 print(f"Setup logger: Using TensorBoardLogger: {train_logger}")
 
             elif isinstance(logger, CometLogger) and logger._experiment_key is None:
+
+                # test writing to random new file
+                print("Write file contents comet_test:")
+
+                test_f=open(logs_path+"/comet_test.txt","w+")
+                test_f.write("Test writing to file from horovod")
+                test_f.close()
+
+                test_f = open(logs_path + "/comet.log","w+")
+                test_f.close()
+
+                # test saved file
+                test_f=open(logs_path+"/comet_test.txt","r")
+                if test_f.mode == 'r':
+                    contents = test_f.read()
+                    print("Read file contents comet_test:")
+                    print(contents)
+                test_f.close()
+
                 # gpu metric logging
                 os.environ["COMET_DISTRIBUTED_NODE_IDENTIFIER"] = "gpu-%s" % (hvd.rank())
                 os.environ["COMET_AUTO_LOG_ENV_DETAILS"] = "1"
@@ -299,11 +318,11 @@ def RemoteTrainer(estimator, metadata, ckpt_bytes, run_id, dataset_idx, train_ro
 
                 torch.save(output, serialized_checkpoint)
 
-                # if isinstance(logger, CometLogger) and logger._experiment_key is None:
-                #     print("Logging comet debug log to comet asset")
-                #     comet_log_path = logs_path + "/comet.log"
-                #     fp = open(comet_log_path, "rb")
-                #     train_logger.log_asset(fp, file_name="debug")
+                if isinstance(logger, CometLogger) and logger._experiment_key is None:
+                    print("Logging comet debug log to comet asset")
+                    comet_log_path = logs_path + "/comet.log"
+                    fp = open(comet_log_path, "rb")
+                    train_logger.log_asset(fp, file_name="debug")
 
                 return serialized_checkpoint
     return train
