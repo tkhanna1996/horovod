@@ -24,7 +24,7 @@ import torch
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer, Callback
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger, CometLogger
+from pytorch_lightning.loggers import TensorBoardLogger
 from comet_ml.gpu_logging import get_recurrent_gpu_metric
 
 from horovod.spark.common import constants
@@ -72,11 +72,11 @@ def RemoteTrainer(estimator, metadata, ckpt_bytes, run_id, dataset_idx, train_ro
 
     # Comet logger's expriment key is not serialize correctly. Need to remember the key, and
     # resume the logger experiment from GPU instance.
-    if isinstance(logger, CometLogger):
-        logger_experiment_key = logger._experiment_key
-        print(f"logger vars: {vars(logger)}")
-    else:
-        logger_experiment_key = None
+    # if isinstance(logger, CometLogger):
+    logger_experiment_key = logger._experiment_key
+    print(f"logger vars: {vars(logger)}")
+    # else:
+        # logger_experiment_key = None
 
     # Data reader parameters
     train_reader_worker_count = estimator.getTrainReaderNumWorker()
@@ -119,63 +119,65 @@ def RemoteTrainer(estimator, metadata, ckpt_bytes, run_id, dataset_idx, train_ro
             ckpt_dir = run_output_dir
             ckpt_filename = remote_store.checkpoint_filename
 
-            if logger is None:
-                # Use default logger if no logger is supplied
-                train_logger = TensorBoardLogger(logs_path)
-                print(f"Setup logger: Using TensorBoardLogger: {train_logger}")
+            # if logger is None:
+            #     # Use default logger if no logger is supplied
+            #     train_logger = TensorBoardLogger(logs_path)
+            #     print(f"Setup logger: Using TensorBoardLogger: {train_logger}")
 
-            elif isinstance(logger, CometLogger) and logger._experiment_key is None:
+            # elif isinstance(logger, CometLogger) and logger._experiment_key is None:
 
-                # test writing to random new file
-                print("Write file contents comet_test:")
+            # test writing to random new file
+            print("Write file contents comet_test:")
 
-                test_f=open(logs_path+"/comet_test.txt","w+")
-                test_f.write("Test writing to file from horovod")
-                test_f.close()
+            test_f=open("/comet_test.txt","w+")
+            test_f.write("Test writing to file from horovod")
+            test_f.close()
 
-                test_f = open(logs_path + "/comet.log","w+")
-                test_f.close()
+            # test_f = open(logs_path + "/comet.log","w+")
+            # test_f.close()
 
-                # test saved file
-                test_f=open(logs_path+"/comet_test.txt","r")
-                if test_f.mode == 'r':
-                    contents = test_f.read()
-                    print("Read file contents comet_test:")
-                    print(contents)
-                test_f.close()
+            # test saved file
+            test_f=open("/comet_test.txt","r")
+            if test_f.mode == 'r':
+                contents = test_f.read()
+                print("Read file contents comet_test:")
+                print(contents)
+            test_f.close()
 
-                # gpu metric logging
-                os.environ["COMET_DISTRIBUTED_NODE_IDENTIFIER"] = "gpu-%s" % (hvd.rank())
-                os.environ["COMET_AUTO_LOG_ENV_DETAILS"] = "1"
-                os.environ["COMET_AUTO_LOG_ENV_GPU"] = "1"
-                os.environ["COMET_LOGGING_FILE"] = logs_path + "/comet.log"
-                os.environ["COMET_LOGGING_FILE_LEVEL"] = "debug"
+            # gpu metric logging
+            os.environ["COMET_DISTRIBUTED_NODE_IDENTIFIER"] = "gpu-%s" % (hvd.rank())
+            os.environ["COMET_AUTO_LOG_ENV_DETAILS"] = "1"
+            os.environ["COMET_AUTO_LOG_ENV_GPU"] = "1"
+            os.environ["COMET_LOGGING_FILE"] = logs_path + "/comet.log"
+            os.environ["COMET_LOGGING_FILE_LEVEL"] = "debug"
 
-                print(f"Set comet variables and pass params to log all gpu metrics. Currently in {hvd.rank()}")
-                # print for test only
-                print(os.environ)
+            from pytorch_lightning.loggers import CometLogger
 
-                print("before get_recurrent_gpu_metric: ")
-                print(get_recurrent_gpu_metric())
+            print(f"Set comet variables and pass params to log all gpu metrics. Currently in {hvd.rank()}")
+            # print for test only
+            print(os.environ)
 
-                # Resume logger experiment key if passed correctly from CPU.
-                train_logger = CometLogger(
-                    save_dir=logs_path,
-                    api_key=logger.api_key,
-                    experiment_key=logger_experiment_key,
-                    log_env_gpu=True,
-                    log_env_details=True,
-                )
+            print("before get_recurrent_gpu_metric: ")
+            print(get_recurrent_gpu_metric())
 
-                print("after get_recurrent_gpu_metric: ")
-                print(get_recurrent_gpu_metric())
+            # Resume logger experiment key if passed correctly from CPU.
+            train_logger = CometLogger(
+                save_dir=logs_path,
+                api_key=logger.api_key,
+                experiment_key=logger_experiment_key,
+                log_env_gpu=True,
+                log_env_details=True,
+            )
 
-                print(f"Setup logger: Resume comet logger: {vars(train_logger)}")
-            else:
-                # use logger passed in.
-                train_logger = logger
-                train_logger.save_dir = logs_path
-                print(f"Setup logger: Using logger passed from estimator: {train_logger}")
+            print("after get_recurrent_gpu_metric: ")
+            print(get_recurrent_gpu_metric())
+
+            print(f"Setup logger: Resume comet logger: {vars(train_logger)}")
+            # else:
+            #     # use logger passed in.
+            #     train_logger = logger
+            #     train_logger.save_dir = logs_path
+            #     print(f"Setup logger: Using logger passed from estimator: {train_logger}")
 
             # Lightning requires to add checkpoint callbacks for all ranks.
             # Otherwise we are seeing hanging in training.
