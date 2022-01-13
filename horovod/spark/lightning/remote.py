@@ -129,7 +129,7 @@ def RemoteTrainer(estimator, metadata, ckpt_bytes, run_id, dataset_idx, train_ro
             # test writing to random new file
             print("Write file contents comet_test:")
 
-            test_f=open("/comet_test.txt","w+")
+            test_f=open("/tmp/comet_test.txt","w+")
             test_f.write("Test writing to file from horovod")
             test_f.close()
 
@@ -137,7 +137,7 @@ def RemoteTrainer(estimator, metadata, ckpt_bytes, run_id, dataset_idx, train_ro
             # test_f.close()
 
             # test saved file
-            test_f=open("/comet_test.txt","r")
+            test_f=open("/tmp/comet_test.txt","r")
             if test_f.mode == 'r':
                 contents = test_f.read()
                 print("Read file contents comet_test:")
