@@ -125,37 +125,23 @@ def RemoteTrainer(estimator, metadata, ckpt_bytes, run_id, dataset_idx, train_ro
             #     print(f"Setup logger: Using TensorBoardLogger: {train_logger}")
 
             # elif isinstance(logger, CometLogger) and logger._experiment_key is None:
-
-            # test writing to random new file
-            print("Write file contents comet_test:")
-
-            test_f=open("/tmp/comet_test.txt","w+")
-            test_f.write("Test writing to file from horovod")
-            test_f.close()
-
-            # test_f = open(logs_path + "/comet.log","w+")
-            # test_f.close()
-
-            # test saved file
-            test_f=open("/tmp/comet_test.txt","r")
-            if test_f.mode == 'r':
-                contents = test_f.read()
-                print("Read file contents comet_test:")
-                print(contents)
-            test_f.close()
-
             # gpu metric logging
-            os.environ["COMET_DISTRIBUTED_NODE_IDENTIFIER"] = "gpu-%s" % (hvd.rank())
+            # serialization might cause this to not work, as
+            # os.environ["COMET_DISTRIBUTED_NODE_IDENTIFIER"] = "gpu-%s" % (hvd.rank()) # can't set in dockerfile since we don't know rank
             os.environ["COMET_AUTO_LOG_ENV_DETAILS"] = "1"
             os.environ["COMET_AUTO_LOG_ENV_GPU"] = "1"
-            os.environ["COMET_LOGGING_FILE"] = logs_path + "/comet.log"
-            os.environ["COMET_LOGGING_FILE_LEVEL"] = "debug"
+            # os.environ["COMET_LOGGING_FILE"] = logs_path + "/comet.log"
+            # os.environ["COMET_LOGGING_FILE_LEVEL"] = "debug"
+            os.environ["COMET_LOGGING_CONSOLE"] = "debug" #  test with this new env
 
-            from pytorch_lightning.loggers import CometLogger
+            # comet team will work on being able to get identifier and logger changed after comet logger is Imported
 
             print(f"Set comet variables and pass params to log all gpu metrics. Currently in {hvd.rank()}")
             # print for test only
             print(os.environ)
+
+            from pytorch_lightning.loggers import CometLogger # gets serialized by cloudpickle
+
 
             print("before get_recurrent_gpu_metric: ")
             print(get_recurrent_gpu_metric())
@@ -320,11 +306,11 @@ def RemoteTrainer(estimator, metadata, ckpt_bytes, run_id, dataset_idx, train_ro
 
                 torch.save(output, serialized_checkpoint)
 
-                if isinstance(logger, CometLogger) and logger._experiment_key is None:
-                    print("Logging comet debug log to comet asset")
-                    comet_log_path = logs_path + "/comet.log"
-                    fp = open(comet_log_path, "rb")
-                    train_logger.log_asset(fp, file_name="debug")
+                # if isinstance(logger, CometLogger) and logger._experiment_key is None:
+                #     print("Logging comet debug log to comet asset")
+                #     comet_log_path = logs_path + "/comet.log"
+                #     fp = open(comet_log_path, "rb")
+                #     train_logger.log_asset(fp, file_name="debug")
 
                 return serialized_checkpoint
     return train
